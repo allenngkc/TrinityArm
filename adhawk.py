@@ -1,16 +1,61 @@
 import time
+import threading
+import pygame
+import random
 
 import adhawkapi
 import adhawkapi.frontend
-from plot import GazeVisualizer
-    
+
+
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import numpy as np
+import matplotlib as mpl
+
+class GazeVisualizer:
+    def __init__(self):
+        # Create a black screen
+        plt.style.use('dark_background')
+        self.fig, self.ax = plt.subplots()
+
+        [x.set_linewidth(0.2) for x in self.ax.spines.values()]
+        
+        self.ax.set_facecolor('black')
+        self.ax.set_xlim(-500, 500)  # Adjust the limits as needed based on your screen size
+        self.ax.set_ylim(-500, 500)
+
+        # Initialize the circle representing gaze
+        self.circle = plt.Circle((0, 0), radius=25, color='white', fill=False)
+        self.ax.add_artist(self.circle)
+
+        # Set plot properties
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.axis('off')
+        
+
+        # Initialize the animation
+        self.ani = None
+
+    def update(self, x, y):
+        # Generate random gaze data for demonstration purposes
+        self.circle.set_center((x, y))
+        self.ani = FuncAnimation(self.fig, self.circle, blit=True, interval=50)
+
+    def show(self):
+        # Show the plot
+        plt.show()
+
+gaze_visualize = GazeVisualizer()
+
+
+def output_data(x, y):
+    print(f"X: {x*5}, Y: {y*5}")
+    gaze_visualize.update(x*3000, y*3000)
 
 class FrontendData:
     ''' BLE Frontend '''
 
     def __init__(self):
-        # 
-
         # Instantiate an API object
         self._api = adhawkapi.frontend.FrontendApi(ble_device_name='ADHAWK MINDLINK-282')
 
@@ -37,7 +82,7 @@ class FrontendData:
         if et_data.gaze is not None:
             xvec, yvec, zvec, vergence = et_data.gaze
             # print(f'Gaze=x={xvec:.2f},y={yvec:.2f},z={zvec:.2f},vergence={vergence:.2f}')
-            
+            output_data(xvec, yvec)
 
         # if et_data.eye_center is not None:
         #     if et_data.eye_mask == adhawkapi.EyeMask.BINOCULAR:
@@ -69,7 +114,7 @@ class FrontendData:
 
     def _handle_tracker_connect(self):
         print("Tracker connected")
-        self._api.set_et_stream_rate(20, callback=lambda *args: None)
+        self._api.set_et_stream_rate(60, callback=lambda *args: None)
 
         self._api.set_et_stream_control([
             adhawkapi.EyeTrackingStreamTypes.GAZE,
@@ -85,14 +130,35 @@ class FrontendData:
         print("Tracker disconnected")
 
 
-def main():
+
+# def main():
     ''' App entrypoint '''
+    # frontend = FrontendData()
+
+    # try:
+    #     while True:
+    #         time.sleep(1)
+    # except (KeyboardInterrupt, SystemExit):
+    #     frontend.shutdown()
+
+def eye_tracking_thread():
     frontend = FrontendData()
+
     try:
         while True:
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         frontend.shutdown()
+
+
+eye_tracking_thread = threading.Thread(target=eye_tracking_thread)
+eye_tracking_thread.daemon = True  # This allows the thread to exit when the main program exits
+eye_tracking_thread.start()
+
+def main():
+    gaze_visualize.show()
+ 
+
 
 if __name__ == '__main__':
     main()
