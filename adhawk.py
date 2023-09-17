@@ -1,15 +1,14 @@
 import time
 import threading
 import pygame
-import random
+import serial
 
 import adhawkapi
 import adhawkapi.frontend
-
+import numpy as np
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import numpy as np
 import matplotlib as mpl
 
 class GazeVisualizer:
@@ -17,6 +16,7 @@ class GazeVisualizer:
         # Create a black screen
         plt.style.use('dark_background')
         self.fig, self.ax = plt.subplots()
+        self.arduinoData = serial.Serial('com14', 115200)
 
         [x.set_linewidth(0.2) for x in self.ax.spines.values()]
         
@@ -25,7 +25,7 @@ class GazeVisualizer:
         self.ax.set_ylim(-500, 500)
 
         # Initialize the circle representing gaze
-        self.circle = plt.Circle((0, 0), radius=25, color='white', fill=False)
+        self.circle = plt.Circle((0, 0), radius=20, color='white', fill=False)
         self.ax.add_artist(self.circle)
 
         # Set plot properties
@@ -38,8 +38,30 @@ class GazeVisualizer:
 
     def update(self, x, y):
         # Generate random gaze data for demonstration purposes
-        self.circle.set_center((x, y))
-        self.ani = FuncAnimation(self.fig, self.circle, blit=True, interval=50)
+        #
+        # self.circle.set_center((x, y))
+        # self.ani = FuncAnimation(self.fig, self.circle, blit=True, interval=50)
+        # print(f"x: {x}, y:{y})")
+
+        x_current_direction = 'nonex'
+        y_current_direction = 'noney'
+        if x < -23:
+            x_current_direction = 'left'
+        elif x > 23:
+            x_current_direction = 'right'
+
+        if y < -15 :
+            y_current_direction = 'down'
+        elif y > 44:
+            y_current_direction = 'up'
+
+        x_data = x_current_direction+'\r'
+        self.arduinoData.write(x_data.encode())
+        print(f"Giving {x_current_direction} to x")
+
+        y_data = y_current_direction+'\r'
+        self.arduinoData.write(y_data.encode())
+        print(f"Giving {y_current_direction} to y")
 
     def show(self):
         # Show the plot
@@ -48,10 +70,18 @@ class GazeVisualizer:
 gaze_visualize = GazeVisualizer()
 
 
-def output_data(x, y):
-    print(f"X: {x*5}, Y: {y*5}")
-    gaze_visualize.update(x*3000, y*3000)
+# Called when data is captured
+def output_data(x, y): 
+    #print(f"X: {x*5}, Y: {y*5}")
+    if not np.isnan(x) and not np.isnan(y):
+        gaze_visualize.update(x*10, y*10)
 
+    # cmd = f"[{x}, {y}]"+'\r'
+    # arduinoData.write(cmd.encode())
+# print("send")
+# test = f"hey" + '\r'
+# arduinoData.write(test.encode())
+# print("Done")
 class FrontendData:
     ''' BLE Frontend '''
 
@@ -114,7 +144,7 @@ class FrontendData:
 
     def _handle_tracker_connect(self):
         print("Tracker connected")
-        self._api.set_et_stream_rate(60, callback=lambda *args: None)
+        self._api.set_et_stream_rate(20, callback=lambda *args: None)
 
         self._api.set_et_stream_control([
             adhawkapi.EyeTrackingStreamTypes.GAZE,
