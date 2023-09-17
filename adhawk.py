@@ -1,7 +1,9 @@
 import time
 import threading
 import pygame
-import random
+import serial
+import cv2
+import numpy as np
 
 import adhawkapi
 import adhawkapi.frontend
@@ -9,49 +11,70 @@ import adhawkapi.frontend
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import numpy as np
 import matplotlib as mpl
 
-class GazeVisualizer:
-    def __init__(self):
-        # Create a black screen
-        plt.style.use('dark_background')
-        self.fig, self.ax = plt.subplots()
+# class GazeVisualizer:
+#     def __init__(self):
+#         # Create a black screen
+#         plt.style.use('dark_background')
+#         self.fig, self.ax = plt.subplots()
 
-        [x.set_linewidth(0.2) for x in self.ax.spines.values()]
+#         [x.set_linewidth(0.2) for x in self.ax.spines.values()]
         
-        self.ax.set_facecolor('black')
-        self.ax.set_xlim(-500, 500)  # Adjust the limits as needed based on your screen size
-        self.ax.set_ylim(-500, 500)
+#         self.ax.set_facecolor('black')
+#         self.ax.set_xlim(-150, 150)  # Adjust the limits as needed based on your screen size
+#         self.ax.set_ylim(-100, 200)
 
-        # Initialize the circle representing gaze
-        self.circle = plt.Circle((0, 0), radius=25, color='white', fill=False)
-        self.ax.add_artist(self.circle)
+#         # Initialize the circle representing gaze
+#         self.circle = plt.Circle((0, 0), radius=15, color='white', fill=False)
+#         self.ax.add_artist(self.circle)
 
-        # Set plot properties
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.axis('off')
+#         # Set plot properties
+#         plt.gca().set_aspect('equal', adjustable='box')
+#         plt.axis('off')
         
 
-        # Initialize the animation
-        self.ani = None
+#         # Initialize the animation
+#         self.ani = None
 
-    def update(self, x, y):
-        # Generate random gaze data for demonstration purposes
-        self.circle.set_center((x, y))
-        self.ani = FuncAnimation(self.fig, self.circle, blit=True, interval=50)
+#     def update(self, x, y):
+#         # Generate random gaze data for demonstration purposes
+#         self.circle.set_center((x, y))
+#         self.ani = FuncAnimation(self.fig, self.circle, blit=True, interval=50)
+        
 
-    def show(self):
-        # Show the plot
-        plt.show()
+#     def show(self):
+#         # Show the plot
+#         plt.show()
 
-gaze_visualize = GazeVisualizer()
+# gaze_visualize = GazeVisualizer()
 
 
-def output_data(x, y):
-    print(f"X: {x*5}, Y: {y*5}")
-    gaze_visualize.update(x*3000, y*3000)
+# arduinoData = serial.Serial('com3', 115200)
 
+cv2.namedWindow("Eye Tracking")
+
+canvas = np.zeros((300, 300, 3), dtype=np.uint8) 
+
+# Called when data is captured
+def output_data(x, y): 
+    # gaze_visualize.update(x*3000, y*3000)
+    # cv2.circle(canvas, (x*3000, y*3000), 10, (0,0,255),-1)
+    # cmd = f"[{x}, {y}]"+'\r'
+    # arduinoData.write(cmd.encode())
+    global canvas
+    cv2.circle(canvas, (int(x*3000), int(y*3000)), 10, (0, 0, 255), -1)  # Red circle
+    print(f"x: {x*3000}, y: {y*3000}")
+    # cv2.imshow("Eye Tracking", canvas)
+    # cv2.waitKey(16)  # 16ms delay to match 60Hz
+
+
+# Arudino Shit
+
+# print("send")
+# test = f"hey" + '\r'
+# arduinoData.write(test.encode())
+# print("Done")
 class FrontendData:
     ''' BLE Frontend '''
 
@@ -156,7 +179,13 @@ eye_tracking_thread.daemon = True  # This allows the thread to exit when the mai
 eye_tracking_thread.start()
 
 def main():
-    gaze_visualize.show()
+    while True: 
+       
+        # Check for key press (press 'q' to exit the loop)
+        key = cv2.waitKey(16)  # 16ms delay to match 60Hz
+
+        if key == ord("q"):
+            break
  
 
 
